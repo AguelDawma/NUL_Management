@@ -115,6 +115,7 @@ void Lab::addLabSlots(){
     addSlot(Tuesday2);
     addSlot(Tuesday3);
     addSlot(Tuesday4);
+    
 }
 
 #endif // LAB_H

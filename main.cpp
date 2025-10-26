@@ -97,7 +97,7 @@ int main() {
             case 6: { // Add booking - requires login
                 if (!currentUser) { cout << "Please login to add bookings.\n"; break; }
                 if (resources_table.empty()) {
-                    std::cout << "\nNo resources have been added yet.\n";
+                    cout << "\nNo resources have been added yet.\n";
                     break;
                 }
 
@@ -110,7 +110,7 @@ int main() {
                     const Resource* res = pair.second;
                     Location loc = res->getLocation(); // Get location details
                     
-                    std::cout << "[" << count++ << "] ID: " << res->getId()
+                    cout << "[" << count++ << "] ID: " << res->getId()
                             << " | Name: " << res->getName() << "" // Name is the map key
                             << " | Type: " << res->getType() // e.g., LAB, BUS
                             << " | Availability: " << (res->getAvailability() ? "Yes" : "No") << "\n";
@@ -138,10 +138,7 @@ int main() {
                         cout<< " Enter slot id: ";
                         cin>> sid;
 
-                        resource->getSlot(sid).book();
-                        currentUser->addBooking(resource);
-
-                        cout<<"\nSuccess!. "<<resource->getName()<<" has been booked from "<<resource->getSlot(sid).startTime<<" to "<<resource->getSlot(sid).endTime<<endl;
+                        resource->bookSlot(sid);
                         break;
                     }
                 }
@@ -211,13 +208,6 @@ int main() {
         }
     }
 
-/*
-    // Clean up dynamically allocated memory before exit (VERY IMPORTANT)
-    for (auto const& [key, val] : resources_table) {
-        delete val;
-    }
-    */
-
 exit_loop:
     return 0;
 }
@@ -241,7 +231,7 @@ static void printMenu() {
 // Function to display the menu options
 void display_menu() {
     cout << "\n============================================\n";
-    cout << "          NUL Campus Navigation Menu\n";
+    cout << "          NUL Campus Navigation Menuï¿½\n";
     cout << "============================================\n";
     cout << "1. Find Shortest Path between two buildings\n";
     cout << "2. List all available buildings/locations\n";
@@ -428,14 +418,16 @@ void execute_navigation(const NULMapGraph& nul_map) {
         reverse(path.begin(), path.end());
 
         cout << "\nShortest Path Found\n";
-        cout << "Total Estimated Walk Time (Minutes): " << fixed << setprecision(1) << distances.at(end_loc) << "\n";
-        cout << "Route: ";
+        cout << "\nTotal Estimated Walk Time (Minutes): " << fixed << setprecision(1) << distances.at(end_loc) << "\n";
+        cout << "\nRoute: ";
+        
         for (size_t i = 0; i < path.size(); ++i) {
             cout << path[i];
             if (i < path.size() - 1) {
                 cout << " -> ";
             }
         }
+        
         cout << "\n------------------------------------------\n";
         print_shortest_path(start_loc, end_loc, previous, distances.at(end_loc), nul_map);
 

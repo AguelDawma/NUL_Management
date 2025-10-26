@@ -17,7 +17,7 @@ struct Slot {
         : id(id), day(day), startTime(startTime), endTime(endTime), isBooked(false) {}
     
     void book(){
-        isBooked = true;
+        this.isBooked = true;
     }
 };
 

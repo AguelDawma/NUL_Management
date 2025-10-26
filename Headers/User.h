@@ -68,19 +68,21 @@ void User::removeBooking(int itemID) {
     auto it = remove_if(bookings.begin(), bookings.end(), [itemID](const Resource* r) {
         return r->getId() == itemID;
     });
+
     if (it != bookings.end()) bookings.erase(it, bookings.end());
 }
 
 void User::viewMyBookings() const {
     cout << "Bookings for user '" << name << "' (id=" << id << "):\n";
+    
     if (bookings.empty()) {
         cout << "  (no bookings)\n";
         return;
     }
+
     for (const auto& b : bookings) {
         cout << "  Resource id=" << b->getId() << " name='" << b->getName() << "' type='" << b->getType() << "'\n";
     }
 }
-
 
 #endif // USER_H
