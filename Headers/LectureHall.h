@@ -9,7 +9,7 @@ using namespace std;
 class LectureHall: protected Lab{
     public:
         LectureHall();
-        LectureHall(int, string, string, Location, bool)
+    LectureHall(int, string, string, Location, bool);
 };
 
 #endif //LECTUREHALL_H
