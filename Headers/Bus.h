@@ -5,7 +5,7 @@
 
 using namespace std;
 
-class Bus: protected Resource{
+class Bus: public Resource{
     private:
         string fromDate;
         string toDate;

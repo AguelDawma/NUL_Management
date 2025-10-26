@@ -1,8 +1,9 @@
 #ifndef USER_H
 #define USER_H
-
+#include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "Resource.h"
 
 using namespace std;
@@ -14,7 +15,7 @@ class User {
         string name;
         string passwordHash; // Store the hashed password
         string type;
-        vector<Resource> bookings;
+        vector<const Resource*> bookings;
 
     public:
         // Constructors
@@ -31,12 +32,12 @@ class User {
         void setId(int id);
         void setName(const string& name);
         void setPasswordHash(const string& passwordHash);
-            void setType(const string& type);
+        void setType(const string& type);
 
         // Utility Functions
-            void addBooking(const Resource& booking);
+        void addBooking(const Resource* booking);
         void removeBooking(int itemID);
-            void viewMyBookings() const;
+        void viewMyBookings() const;
 };
 
 // Constructors
@@ -59,25 +60,25 @@ void User::setPasswordHash(const string& passwordHash) { this->passwordHash = pa
 void User::setType(const string& type) { this->type = type; }
 
 // Utility Functions
-void User::addBooking(const Resource& booking) {
+void User::addBooking(const Resource* booking) {
     bookings.push_back(booking);
 }
 
 void User::removeBooking(int itemID) {
-    auto it = std::remove_if(bookings.begin(), bookings.end(), [itemID](const Resource& r) {
-        return r.getId() == itemID;
+    auto it = remove_if(bookings.begin(), bookings.end(), [itemID](const Resource* r) {
+        return r->getId() == itemID;
     });
     if (it != bookings.end()) bookings.erase(it, bookings.end());
 }
 
 void User::viewMyBookings() const {
-    std::cout << "Bookings for user '" << name << "' (id=" << id << "):\n";
+    cout << "Bookings for user '" << name << "' (id=" << id << "):\n";
     if (bookings.empty()) {
-        std::cout << "  (no bookings)\n";
+        cout << "  (no bookings)\n";
         return;
     }
     for (const auto& b : bookings) {
-        std::cout << "  Resource id=" << b.getId() << " name='" << b.getName() << "' type='" << b.getType() << "'\n";
+        cout << "  Resource id=" << b->getId() << " name='" << b->getName() << "' type='" << b->getType() << "'\n";
     }
 }
 

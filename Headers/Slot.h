@@ -15,6 +15,10 @@ struct Slot {
     Slot() = default;
     Slot(int id, const string& day, const string& startTime, const string& endTime)
         : id(id), day(day), startTime(startTime), endTime(endTime), isBooked(false) {}
+    
+    void book(){
+        isBooked = true;
+    }
 };
 
 #endif // SLOT_H

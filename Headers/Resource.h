@@ -29,7 +29,9 @@ class Resource{
 
         //availability
         bool getAvailability() const;
-        void setAvailability(bool availability);
+        void setAvailability(bool availability);\
+
+        virtual ~Resource() {}
 
 };
 
