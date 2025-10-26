@@ -20,4 +20,14 @@ class Bus: protected Resource{
         string getToDate();
 };
 
+
+Bus::Bus() : Resource(), fromDate(""), toDate("") {}
+
+void Bus::setFromDate(string d) { fromDate = d; }
+void Bus::setToDate(string d) { toDate = d; }
+
+string Bus::getFromDate() { return fromDate; }
+string Bus::getToDate() { return toDate; }
+
+
 #endif //BUS_H

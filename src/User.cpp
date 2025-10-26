@@ -1,50 +1,15 @@
-#ifndef USER_H
-#define USER_H
-
-#include <string>
-#include <vector>
-#include "Resource.h"
+#include "../Headers/User.h"
+#include <iostream>
+#include <algorithm>
 
 using namespace std;
-
-
-class User {
-    private:
-        int id;
-        string name;
-        string passwordHash; // Store the hashed password
-        string type;
-        vector<Resource> bookings;
-
-    public:
-        // Constructors
-        User();
-        User(int id, const string& name, const string& passwordHash, string);
-
-        // Getters
-        int getId() const;
-        string getName() const;
-        string getPasswordHash() const;
-        string getType() const;
-
-        // Setters
-        void setId(int id);
-        void setName(const string& name);
-        void setPasswordHash(const string& passwordHash);
-            void setType(const string& type);
-
-        // Utility Functions
-            void addBooking(const Resource& booking);
-        void removeBooking(int itemID);
-            void viewMyBookings() const;
-};
 
 // Constructors
 User::User()
     : id(0), name(""), passwordHash(""), type(""), bookings() {}
 
 User::User(int id, const string& name, const string& passwordHash, string type)
-    : id(id), name(name), passwordHash(passwordHash), type(type), bookings() {}
+    : id(id), name(name), passwordHash(passwordHash), type(""), bookings() {}
 
 // Getters
 int User::getId() const { return id; }
@@ -80,6 +45,3 @@ void User::viewMyBookings() const {
         std::cout << "  Resource id=" << b.getId() << " name='" << b.getName() << "' type='" << b.getType() << "'\n";
     }
 }
-
-
-#endif // USER_H
