@@ -108,6 +108,7 @@ void execute_navigation(const NULMapGraph& nul_map) {
             }
         }
         cout << "\n------------------------------------------\n";
+        print_shortest_path(start_loc, end_loc, previous, distances.at(end_loc), nul_map);
 
     } else {
         cout << "\n❌ Path not found from **" << start_loc << "** to **" << end_loc << "**.\n";

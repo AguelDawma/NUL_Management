@@ -8,6 +8,7 @@
 #include <limits>
 #include <string>
 #include <algorithm>
+#include <iomanip> // <-- ADDED: Necessary for setprecision and fixed
 
 using namespace std;
 
@@ -38,13 +39,30 @@ public:
         return nodes;
     }
 
+    /**
+     * @brief Helper function to get the weight between two directly connected nodes.
+     * @param u Start node.
+     * @param v End node.
+     * @return The weight (distance/time) of the edge, or -1.0 if not found.
+     */
+    double get_edge_weight(const string& u, const string& v) const {
+        if (adj_list.count(u)) {
+            for (const auto& edge : adj_list.at(u)) {
+                if (edge.first == v) {
+                    return edge.second;
+                }
+            }
+        }
+        return -1.0; 
+    }
+
     // Dijkstra's Shortest Path Algorithm
     map<string, string> dijkstra(const string& start_node, 
                                                 map<string, double>& distances) const;
     
 };
 
-// ... Dijkstra's implementation (same as previous) ...
+// ... Dijkstra's implementation (remains the same) ...
 map<string, string> NULMapGraph::dijkstra(const string& start_node, 
                                                     map<string, double>& distances) const {
     
@@ -93,12 +111,13 @@ map<string, string> NULMapGraph::dijkstra(const string& start_node,
 }
 
 /**
- * @brief Reconstructs and prints the path.
+ * @brief Reconstructs and prints the path, detailing each edge and building passed. (UPDATED)
  */
 void print_shortest_path(const string& start_node, 
                          const string& end_node, 
                          const map<string, string>& previous_node,
-                         double final_distance) {
+                         double final_distance,
+                         const NULMapGraph& graph) { // <-- NEW PARAMETER
     
     if (previous_node.find(end_node) == previous_node.end() && start_node != end_node) {
         cout << "\n❌ Path not found.\n";
@@ -115,19 +134,42 @@ void print_shortest_path(const string& start_node,
     path.push_back(start_node);
     reverse(path.begin(), path.end());
 
+    // --- Detailed Output ---
     cout << "\n🌟 **Shortest Path on NUL Campus**\n";
     cout << "------------------------------------------------------------------\n";
     cout << "Origin: **" << start_node << "**\n";
     cout << "Destination: **" << end_node << "**\n";
-    cout << "Total Estimated Walk Time (Minutes): **" << final_distance << "**\n";
-    cout << "Path: ";
-    for (size_t i = 0; i < path.size(); ++i) {
-        cout << path[i];
-        if (i < path.size() - 1) {
-            cout << " **->** ";
+    cout << "Total Estimated Walk Time: **" << fixed << setprecision(1) << final_distance << " minutes**\n";
+    cout << "------------------------------------------------------------------\n";
+    
+    cout << "Route Details:\n";
+    double cumulative_distance = 0.0;
+
+    cout << "Start: **" << path[0] << "**\n";
+
+    // Iterate through the path, showing edges and intermediate nodes
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        const string& u = path[i];
+        const string& v = path[i + 1];
+        
+        // Get the distance for this segment using the graph object
+        double segment_weight = graph.get_edge_weight(u, v);
+        cumulative_distance += segment_weight;
+
+        // Print the Edge (Walk)
+        cout << "  ➡️ Walk from **" << u << "** to **" << v 
+             << "** (Distance: " << fixed << setprecision(1) << segment_weight << " min)";
+        
+        // Show the cumulative total
+        cout << " [Cumulative: " << fixed << setprecision(1) << cumulative_distance << " min]\n";
+        
+        // Explicitly list the intermediate building passed through
+        if (i < path.size() - 2) {
+            cout << "  Passing through: **" << v << "**\n";
         }
     }
-    cout << "\n------------------------------------------------------------------\n";
+    cout << "End: **" << path.back() << "**\n";
+    cout << "------------------------------------------------------------------\n";
 }
 
 #endif // MAP_H
