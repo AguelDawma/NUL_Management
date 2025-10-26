@@ -10,7 +10,7 @@ using namespace std;
 
 class Lab: public Resource {
     protected:
-        std::vector<Slot> slots;
+        vector<Slot> slots;
 
     public:
         // Setters
@@ -65,15 +65,15 @@ void Lab::addSlot(const Slot& slot) {
 }
 
 void Lab::viewAvailableSlots() const {
-    std::cout << "Available slots for Lab '" << getName() << "' (id=" << getId() << "):\n";
+    cout << "Available slots for Lab '" << getName() << "' (id=" << getId() << "):\n";
     bool any = false;
     for (const auto& s : slots) {
         if (!s.isBooked) {
             any = true;
-            std::cout << "  Slot id=" << s.id << " " << s.startTime << " - " << s.endTime << "\n";
+            cout << "  Slot id=" << s.id << " " << s.startTime << " - " << s.endTime << "\n";
         }
     }
-    if (!any) std::cout << "  (no available slots)\n";
+    if (!any) cout << "  (no available slots)\n";
 }
 
 bool Lab::bookSlot(int slotId) {

@@ -105,9 +105,9 @@ int main() {
 
                 int count = 1;
                 // Iterate over the map of resources
-                for (const auto& pair : resources_table) {
+                for (auto& pair : resources_table) {
                     // Use the base class pointer to access common methods
-                    const Resource* res = pair.second;
+                    Resource* res = pair.second;
                     Location loc = res->getLocation(); // Get location details
                     
                     cout << "[" << count++ << "] ID: " << res->getId()
@@ -128,17 +128,18 @@ int main() {
                 }
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-                for(const auto& pair : resources_table){
-                    const Resource* resourceB = pair.second;
-                    const Lab* resource = dynamic_cast<const Lab*>(resourceB);
+                for(auto& pair : resources_table){
+                    Resource* resourceB = pair.second;
+                    Lab* resource = dynamic_cast<Lab*>(resourceB);
                     if(rid == resource->getId() && resource->getType() == "LAB"){
                         int sid;
                         cout<<"\nChoose from the slots:"<<endl;
                         resource->viewAvailableSlots();
-                        cout<< " Enter slot id: ";
+                        cout<< "Enter slot id: ";
                         cin>> sid;
 
                         resource->bookSlot(sid);
+                        currentUser->addBooking(resource);
                         break;
                     }
                 }
