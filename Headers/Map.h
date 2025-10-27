@@ -135,17 +135,17 @@ void print_shortest_path(const string& start_node,
     reverse(path.begin(), path.end());
 
     // --- Detailed Output ---
-    cout << "\n🌟 **Shortest Path on NUL Campus**\n";
+    cout << "\nShortest Path on NUL Campus\n";
     cout << "------------------------------------------------------------------\n";
-    cout << "Origin: **" << start_node << "**\n";
-    cout << "Destination: **" << end_node << "**\n";
-    cout << "Total Estimated Walk Time: **" << fixed << setprecision(1) << final_distance << " minutes**\n";
+    cout << "Origin: " << start_node << "\n";
+    cout << "Destination: " << end_node << "\n";
+    cout << "Total Estimated Walk Time: " << fixed << setprecision(1) << final_distance << " minutes\n";
     cout << "------------------------------------------------------------------\n";
     
     cout << "Route Details:\n";
     double cumulative_distance = 0.0;
 
-    cout << "Start: **" << path[0] << "**\n";
+    cout << "Start: " << path[0] << "\n";
 
     // Iterate through the path, showing edges and intermediate nodes
     for (size_t i = 0; i < path.size() - 1; ++i) {
@@ -157,18 +157,18 @@ void print_shortest_path(const string& start_node,
         cumulative_distance += segment_weight;
 
         // Print the Edge (Walk)
-        cout << "  ➡️ Walk from **" << u << "** to **" << v 
-             << "** (Distance: " << fixed << setprecision(1) << segment_weight << " min)";
+        cout << "   Walk from " << u << " to " << v 
+             << " (Distance: " << fixed << setprecision(1) << segment_weight << " min)";
         
         // Show the cumulative total
         cout << " [Cumulative: " << fixed << setprecision(1) << cumulative_distance << " min]\n";
         
         // Explicitly list the intermediate building passed through
         if (i < path.size() - 2) {
-            cout << "  Passing through: **" << v << "**\n";
+            cout << "  Passing through: " << v << "\n";
         }
     }
-    cout << "End: **" << path.back() << "**\n";
+    cout << "End: " << path.back() << "\n";
     cout << "------------------------------------------------------------------\n";
 }
 

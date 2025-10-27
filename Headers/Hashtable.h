@@ -36,6 +36,10 @@ public:
 
     // Display the hash table structure
     void display() const;
+
+    vector<list<User>> getAllUsers() const{
+        return table;
+    }
 };
 
 

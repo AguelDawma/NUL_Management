@@ -22,6 +22,7 @@ class Lab: public Resource {
         bool cancelSlotBooking(int slotId); // returns true if canceled
         void addLabSlots();
         Slot getSlot(int id) const;
+        vector<Slot> getSlots() const { return slots; }
 
         Lab();
         Lab(int id, const string& name, const string& type, Location location, bool available);

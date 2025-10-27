@@ -10,6 +10,7 @@
 #include "Headers/Lab.h"
 #include "Headers/Bus.h"
 #include "Headers/LectureHall.h"
+#include "Headers/textfiles.h"
 
 using namespace std;
 
@@ -23,14 +24,95 @@ string get_valid_input(const NULMapGraph& map, const string& prompt);
 void execute_navigation(const NULMapGraph& nul_map);
 void addLabSlots();
 
+#include <sstream> // For time formatting
+
+// Global variable to ensure unique resource IDs
+int next_resource_id = 1; 
+
+std::string format_hour(int hour) {
+    std::stringstream ss;
+    ss << std::setw(2) << std::setfill('0') << hour << ":00";
+    return ss.str();
+}
+
+void generate_daily_slots(Lab* lab_ptr) {
+    if (!lab_ptr) return;
+
+    int slot_id_counter = 1;
+    // Iterate from 8 AM up to, but not including, 4 PM
+    for (int start_hour = 8; start_hour < 16; ++start_hour) {
+        std::string startTime = format_hour(start_hour);
+        std::string endTime = format_hour(start_hour + 1);
+
+        // Create the slot
+        Slot new_slot(slot_id_counter++, "Monday", startTime, endTime);
+        
+        // Add to the resource
+        lab_ptr->addSlot(new_slot);
+    }
+}
+
+
+/**
+ * @brief Prompts the user to book an available slot in a Lecture Hall.
+ * @param lecture_hall_name The name (key) of the hall to book.
+ * @param resources_map The resource collection.
+ */
+void book_lecture_hall(const std::string& lecture_hall_name, std::map<std::string, Resource*>& resources_map) {
+    
+    // 1. Find the resource
+    if (resources_map.find(lecture_hall_name) == resources_map.end()) {
+        std::cout << "❌ Error: Lecture Hall '" << lecture_hall_name << "' not found.\n";
+        return;
+    }
+
+    // 2. Safely cast the Resource* to a Lab* (since LectureHall inherits from Lab)
+    Lab* lh_ptr = dynamic_cast<Lab*>(resources_map[lecture_hall_name]);
+    if (!lh_ptr) {
+        std::cout << "❌ Error: Found resource is not a bookable Lecture Hall/Lab type.\n";
+        return;
+    }
+
+    std::cout << "\n--- Booking for Lecture Hall: " << lecture_hall_name << " ---\n";
+
+    // 3. Generate the required slots (8:00 to 16:00)
+    generate_daily_slots(lh_ptr);
+    
+    // 4. View available slots
+    lh_ptr->viewAvailableSlots();
+
+    // 5. Prompt for booking
+    int slot_id;
+    std::cout << "Enter the Slot ID you wish to book (e.g., 3 for 10:00 - 11:00): ";
+    if (!(std::cin >> slot_id)) {
+        std::cout << "⚠️ Invalid input.\n";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        return;
+    }
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    // 6. Attempt to book
+    if (lh_ptr->bookSlot(slot_id)) {
+        std::cout << "✅ Booking successful! Slot ID " << slot_id << " is now reserved.\n";
+    } else {
+        std::cout << "❌ Booking failed! Slot ID " << slot_id << " is either invalid or already booked.\n";
+    }
+}
+
 int main() {
 
     map<string, Resource*> resources_table;
     NULMapGraph nul_campus;
     initialize_map(nul_campus);
     HashTable user_db(11);
+
     int nextId = 1001;
     User* currentUser = nullptr;
+
+    // 2. Load persistent data at startup (NEW)
+    load_resources(resources_table);
+    load_users(user_db); // Requires implementation of load_users
 
     while (true) {
         printMenu();
@@ -130,8 +212,22 @@ int main() {
 
                 for(auto& pair : resources_table){
                     Resource* resourceB = pair.second;
-                    Lab* resource = dynamic_cast<Lab*>(resourceB);
-                    if(rid == resource->getId() && resource->getType() == "LAB"){
+        
+                    if(rid == resourceB->getId() && resourceB->getType() == "LAB"){
+                        Lab* resource = dynamic_cast<Lab*>(resourceB);
+                        int sid;
+                        cout<<"\nChoose from the slots:"<<endl;
+                        resource->viewAvailableSlots();
+                        cout<< "Enter slot id: ";
+                        cin>> sid;
+
+                        resource->bookSlot(sid);
+                        currentUser->addBooking(resource);
+                        break;
+                    }
+
+                    if(rid == resourceB->getId() && resourceB->getType() == "LECTUREHALL"){
+                        LectureHall* resource = dynamic_cast<LectureHall*>(resourceB);
                         int sid;
                         cout<<"\nChoose from the slots:"<<endl;
                         resource->viewAvailableSlots();
@@ -198,6 +294,8 @@ int main() {
             }
 
             case 11: {
+                save_resources(resources_table);
+                save_users(user_db);
                 cout << "Exiting.\n";
                 goto exit_loop;
             }
@@ -239,9 +337,6 @@ void display_menu() {
     cout << "3. Exit Program\n"<<endl;
     cout << "\nEnter your choice : ";
 }
-
-// A utility to simulate ID generation
-static int next_resource_id = 1;
 
 /**
  * @brief Prompts the user for resource details, creates the object, and stores it.
@@ -299,7 +394,7 @@ void add_new_resource(map<string, Resource*>& resources_map) {
     } else if (type_input == "LECTUREHALL") {
         // LectureHall constructor: LectureHall(id, name, type, location, available)
         new_resource = new LectureHall(current_id, name, "LECTUREHALL", loc, true);
-        
+
     } else {
         cout << "\nInvalid resource type entered.\n";
         return;
@@ -367,6 +462,7 @@ void initialize_map(NULMapGraph& map) {
     map.add_path("CMP", "Economics Building", 1.0);
     map.add_path("CMP", "ETF", 1.0);
     map.add_path("Netherlands Hall", "Economics Building", 2.0);
+    map.add_path("CMP", "Netherlands Hall", 1.0);
 }
 
 // Function to list all nodes

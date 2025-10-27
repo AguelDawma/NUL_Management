@@ -1,0 +1,4 @@
+1002|Thaps|taps|Lecturer
+1003|Mirror|rele|Student
+1004|Tholoana|etla|Student
+1001|Thapelo|sekho|Student
