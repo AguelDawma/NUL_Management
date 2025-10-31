@@ -6,6 +6,13 @@
 
 using namespace std;
 
+struct Location {
+    string name;
+    Location(string n = "Unknown") : name(n) {}
+    string getName() const { return name; }
+};
+// ----------------------------------------------------------------------------
+
 class Resource{
     protected:
         int id;

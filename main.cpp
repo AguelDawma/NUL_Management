@@ -1,536 +1,309 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <map>
 #include <limits>
+#include <sstream>
 #include <iomanip>
+#include <algorithm>
+
+// Include necessary headers for the system structure
+// Note: Assuming these files exist in the same directory or accessible path
 #include "Headers/Hashtable.h"
 #include "Headers/User.h"
-#include "Headers/Map.h"
 #include "Headers/Resource.h"
-#include "Headers/Location.h"
 #include "Headers/Lab.h"
 #include "Headers/Bus.h"
 #include "Headers/LectureHall.h"
-#include "Headers/textfiles.h"
+#include "Headers/Slot.h" // Although included by Lab.h, explicitly including ensures clarity
 
 using namespace std;
 
+/*
+// --- Minimal Definition for Location (Assumed from Resource.h dependency) ---
+struct Location {
+    string name;
+    Location(string n = "Unknown") : name(n) {}
+    string getName() const { return name; }
+};
+// ----------------------------------------------------------------------------
+*/
+
+
+// Global variables
+User* currentUser = nullptr;
+int next_user_id = 1;
+int next_resource_id = 1;
+
+// Function Prototypes
 static void printMenu();
-void display_menu();
-void add_new_resource(map<string, Resource*>& resources_map);
-void print_all_resources(const std::map<std::string, Resource*>& resources_map);
-void initialize_map(NULMapGraph& map);
-void list_buildings(const NULMapGraph& map);
-string get_valid_input(const NULMapGraph& map, const string& prompt);
-void execute_navigation(const NULMapGraph& nul_map);
-void addLabSlots();
-
-#include <sstream> // For time formatting
-
-// Global variable to ensure unique resource IDs
-int next_resource_id = 1; 
-
-std::string format_hour(int hour) {
-    std::stringstream ss;
-    ss << std::setw(2) << std::setfill('0') << hour << ":00";
-    return ss.str();
-}
-
-void generate_daily_slots(Lab* lab_ptr) {
-    if (!lab_ptr) return;
-
-    int slot_id_counter = 1;
-    // Iterate from 8 AM up to, but not including, 4 PM
-    for (int start_hour = 8; start_hour < 16; ++start_hour) {
-        std::string startTime = format_hour(start_hour);
-        std::string endTime = format_hour(start_hour + 1);
-
-        // Create the slot
-        Slot new_slot(slot_id_counter++, "Monday", startTime, endTime);
-        
-        // Add to the resource
-        lab_ptr->addSlot(new_slot);
-    }
-}
+void initialize_resources(map<int, Resource*>& resources_map);
+void print_all_resources(const map<int, Resource*>& resources_map);
+void cleanup_resources(map<int, Resource*>& resources_map);
 
 
-/**
- * @brief Prompts the user to book an available slot in a Lecture Hall.
- * @param lecture_hall_name The name (key) of the hall to book.
- * @param resources_map The resource collection.
- */
-void book_lecture_hall(const std::string& lecture_hall_name, std::map<std::string, Resource*>& resources_map) {
-    
-    // 1. Find the resource
-    if (resources_map.find(lecture_hall_name) == resources_map.end()) {
-        std::cout << "❌ Error: Lecture Hall '" << lecture_hall_name << "' not found.\n";
-        return;
-    }
-
-    // 2. Safely cast the Resource* to a Lab* (since LectureHall inherits from Lab)
-    Lab* lh_ptr = dynamic_cast<Lab*>(resources_map[lecture_hall_name]);
-    if (!lh_ptr) {
-        std::cout << "❌ Error: Found resource is not a bookable Lecture Hall/Lab type.\n";
-        return;
-    }
-
-    std::cout << "\n--- Booking for Lecture Hall: " << lecture_hall_name << " ---\n";
-
-    // 3. Generate the required slots (8:00 to 16:00)
-    generate_daily_slots(lh_ptr);
-    
-    // 4. View available slots
-    lh_ptr->viewAvailableSlots();
-
-    // 5. Prompt for booking
-    int slot_id;
-    std::cout << "Enter the Slot ID you wish to book (e.g., 3 for 10:00 - 11:00): ";
-    if (!(std::cin >> slot_id)) {
-        std::cout << "⚠️ Invalid input.\n";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        return;
-    }
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    // 6. Attempt to book
-    if (lh_ptr->bookSlot(slot_id)) {
-        std::cout << "✅ Booking successful! Slot ID " << slot_id << " is now reserved.\n";
-    } else {
-        std::cout << "❌ Booking failed! Slot ID " << slot_id << " is either invalid or already booked.\n";
-    }
-}
+// =======================================================================
+//                        MAIN APPLICATION LOGIC
+// =======================================================================
 
 int main() {
+    // Initialize User Database (Hash Table)
+    // Using a size of 10 for demonstration
+    HashTable user_db(10);
+    
+    // Initialize Resources (Map<ID, Resource*>)
+    map<int, Resource*> resources_table;
+    initialize_resources(resources_table);
 
-    map<string, Resource*> resources_table;
-    NULMapGraph nul_campus;
-    initialize_map(nul_campus);
-    HashTable user_db(11);
+    // Initial users for demonstration (1 Admin, 1 Regular)
+    user_db.insert(next_user_id++, "admin", "adminpass", "Admin");
+    user_db.insert(next_user_id++, "alice", "alicepass", "Regular");
+    user_db.insert(next_user_id++, "bob", "bobpass", "Regular");
 
-    int nextId = 1001;
-    User* currentUser = nullptr;
 
-    // 2. Load persistent data at startup (NEW)
-    load_resources(resources_table);
-    load_users(user_db); // Requires implementation of load_users
-
+    int choice;
     while (true) {
         printMenu();
-        int choice = 0;
         if (!(cin >> choice)) {
+            cout << "Invalid input. Please enter a number.\n";
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Invalid input. Try again.\n";
             continue;
         }
-        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // eat rest of line
+        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear the buffer
 
         switch (choice) {
             case 1: { // Login
                 string username, password;
-                cout << "Username: "; getline(cin, username);
-                cout << "Password: "; getline(cin, password);
-                User* u = user_db.login(username, password);
-                if (u) { currentUser = u; cout << "Login successful. Welcome, " << u->getName() << "\n"; }
-                else { cout << "Login failed.\n"; }
-                break;
-            }
+                cout << "\nEnter username: "; getline(cin, username);
+                cout << "Enter password: "; getline(cin, password);
 
-            case 2: { // Sign up
-                string username, password, type;
-                cout << "Username: "; getline(cin, username);
-                cout << "Password: "; getline(cin, password);
-                cout << "Type (Student/Lecturer/...): "; getline(cin, type);
-                if (username.empty() || password.empty()) { cout << "Username and password cannot be empty.\n"; break; }
-                user_db.insert(nextId++, username, password, type);
-                cout << "User '" << username << "' signed up.\n";
-                break;
-            }
-
-            case 3: { // Logout
-                if (currentUser) { cout << "Logged out: " << currentUser->getName() << "\n"; currentUser = nullptr; }
-                else cout << "Not logged in.\n";
-                break;
-            }
-
-            case 4: {
-                user_db.display();
-                break;
-            }
-
-            case 5: { // View user bookings (own or others) - require login
-                string username;
-                cout << "Enter username (leave empty to view your bookings): ";
-                getline(cin, username);
-                User* u = nullptr;
-                if (username.empty()) {
-                    if (!currentUser) { cout << "Please login to view your bookings.\n"; break; }
-                    u = currentUser;
+                User* user = user_db.login(username, password);
+                if (user) {
+                    currentUser = user;
+                    cout << "? Login successful! Welcome, " << currentUser->getName() << " (" << currentUser->getType() << ").\n";
                 } else {
-                    // require login to view other users' bookings
-                    if (!currentUser) { cout << "Please login to view other users' bookings.\n"; break; }
-                    u = user_db.get(username);
+                    cout << "? Login failed. Invalid username or password.\n";
+                    currentUser = nullptr;
                 }
-                if (!u) { cout << "User not found.\n"; }
-                else { u->viewMyBookings(); }
                 break;
             }
 
-            case 6: { // Add booking - requires login
-                if (!currentUser) { cout << "Please login to add bookings.\n"; break; }
-                if (resources_table.empty()) {
-                    cout << "\nNo resources have been added yet.\n";
+            case 2: { // Sign Up
+                string name, password;
+                cout << "\nEnter new username: "; getline(cin, name);
+                
+                if (user_db.get(name) != nullptr) {
+                    cout << "? Username already exists. Please choose another.\n";
                     break;
                 }
 
-                cout << "\nChoose resource id amongst the below resources.\n"<<endl;
-
-                int count = 1;
-                // Iterate over the map of resources
-                for (auto& pair : resources_table) {
-                    // Use the base class pointer to access common methods
-                    Resource* res = pair.second;
-                    Location loc = res->getLocation(); // Get location details
-                    
-                    cout << "[" << count++ << "] ID: " << res->getId()
-                            << " | Name: " << res->getName() << "" // Name is the map key
-                            << " | Type: " << res->getType() // e.g., LAB, BUS
-                            << " | Availability: " << (res->getAvailability() ? "Yes" : "No") << "\n";
-                    
-                    // Print Location details
-                    std::cout << "    Location: Building " << loc.getBuilding()<<endl;
-                }
-                std::cout << "\n--------------------------------------------\n";
-
-                int rid; string rname, rtype;
-                cout << "\n Enter Resource id (integer): ";
-                if (!(cin >> rid)) { cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
-                    cout << "Invalid id.\n"; 
-                    break; 
-                }
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-                for(auto& pair : resources_table){
-                    Resource* resourceB = pair.second;
-        
-                    if(rid == resourceB->getId() && resourceB->getType() == "LAB"){
-                        Lab* resource = dynamic_cast<Lab*>(resourceB);
-                        int sid;
-                        cout<<"\nChoose from the slots:"<<endl;
-                        resource->viewAvailableSlots();
-                        cout<< "Enter slot id: ";
-                        cin>> sid;
-
-                        resource->bookSlot(sid);
-                        currentUser->addBooking(resource);
-                        break;
-                    }
-
-                    if(rid == resourceB->getId() && resourceB->getType() == "LECTUREHALL"){
-                        LectureHall* resource = dynamic_cast<LectureHall*>(resourceB);
-                        int sid;
-                        cout<<"\nChoose from the slots:"<<endl;
-                        resource->viewAvailableSlots();
-                        cout<< "Enter slot id: ";
-                        cin>> sid;
-
-                        resource->bookSlot(sid);
-                        currentUser->addBooking(resource);
-                        break;
-                    }
-                }
+                cout << "Enter password: "; getline(cin, password);
+                user_db.insert(next_user_id++, name, password, "Regular");
+                cout << "? Account created for " << name << ". Please log in.\n";
                 break;
             }
 
-            case 7: { // Remove booking - requires login
-                if (!currentUser) { cout << "Please login to remove bookings.\n"; break; }
-                int rid;
-                cout << "Resource id to remove: ";
-                if (!(cin >> rid)) { cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); cout << "Invalid id.\n"; break; }
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                currentUser->removeBooking(rid);
-                cout << "If it existed, booking removed for " << currentUser->getName() << "\n";
-                break;
-            }
-
-            case 8: { // Navigation Menu
-            	int nav_choice = 0;
-            	do{
-            		display_menu();
-	                if (!(cin >> nav_choice)) {
-	                    cin.clear();
-	                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-	                    cout << "Invalid input. Returning to main menu.\n";
-	                    break;
-	                }
-	                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // eat rest of line
-	
-	                switch (nav_choice) {
-	                    case 1:
-	                        execute_navigation(nul_campus);
-	                        break;
-	                    case 2:
-	                        list_buildings(nul_campus);
-	                        break;
-	                    case 3:
-	                        cout << "Exiting navigation menu.\n";
-	                        break;
-	                    default:
-	                        cout << "Unknown option in navigation menu.\n";
-	                        break;
-	                }
-				}while(nav_choice!=3);
-                break;
-            }
-
-            case 9: {
-                add_new_resource(resources_table);
-                break;
-            }
-
-            case 10: {
+            case 3: { // View All Resources
                 print_all_resources(resources_table);
                 break;
             }
 
-            case 11: {
-                save_resources(resources_table);
-                save_users(user_db);
-                cout << "Exiting.\n";
-                goto exit_loop;
+            case 4: { // View My Bookings
+                if (!currentUser) { cout << "?? Please login first.\n"; break; }
+                currentUser->viewMyBookings();
+                break;
+            }
+            
+            case 5: { // Display All Users (Admin only for security)
+                if (!currentUser || currentUser->getType() != "Admin") { cout << "? Access denied. Admin privileges required.\n"; break; }
+                user_db.display();
+                break;
             }
 
+            case 6: { // Add Booking - Includes Waitlist Logic
+                if (!currentUser) { cout << "?? Please login first.\n"; break; }
+                
+                print_all_resources(resources_table);
+                int rid;
+                cout << "\nEnter Resource ID to book: ";
+                if (!(cin >> rid)) {
+                    cout << "Invalid input.\n"; cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); break;
+                }
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                if (resources_table.count(rid) == 0) {
+                    cout << "? Resource ID not found.\n"; break;
+                }
+
+                Resource* resourceB = resources_table.at(rid);
+                
+                if (resourceB->getType() == "LAB" || resourceB->getType() == "LECTUREHALL") {
+                    Lab* resource = dynamic_cast<Lab*>(resourceB);
+                    int sid;
+                    cout << "\nChoose from the available slots:\n";
+                    resource->viewAvailableSlots();
+                    
+                    cout << "\nEnter slot ID to book: ";
+                    if (!(cin >> sid)) {
+                        cout << "Invalid input.\n"; cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); break;
+                    }
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                    // Attempt to book the slot
+                    if (resource->bookSlot(sid)) {
+                        currentUser->addBooking(resource);
+                        cout << "? Successfully booked slot " << sid << " for resource ID " << rid << ".\n";
+                    } else {
+                        // ? Booking failed (slot already booked or not found). Prompt waitlist.
+                        cout << "\nSlot is either already booked or ID is invalid.\n";
+                        cout << "Would you like to join the waitlist for this resource (ID " << rid << ")? (y/n): ";
+                        char join;
+                        cin >> join;
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        if (tolower(join) == 'y') {
+                            currentUser->addToResourceWaitlist(resource);
+                        }
+                    }
+                } else if (resourceB->getType() == "BUS") {
+                    // Simple booking for Bus (no slots/waitlist logic needed)
+                    currentUser->addBooking(resourceB);
+                    cout << "? Successfully booked Bus ID " << rid << ".\n";
+                } else {
+                    cout << "? Booking not supported for this resource type.\n";
+                }
+                break;
+            }
+            
+            case 7: { // Remove Booking and Process Waitlist
+                if (!currentUser) { cout << "?? Please login first.\n"; break; }
+
+                currentUser->viewMyBookings();
+                int rid;
+                cout << "\nEnter Resource ID to cancel: ";
+                if (!(cin >> rid)) {
+                    cout << "Invalid input.\n"; cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); break;
+                }
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                if (resources_table.count(rid) == 0) {
+                    cout << "? Resource ID not found.\n"; break;
+                }
+
+                Resource* resourceB = resources_table.at(rid);
+
+                if (resourceB->getType() == "LAB" || resourceB->getType() == "LECTUREHALL") {
+                    Lab* resource = dynamic_cast<Lab*>(resourceB);
+                    int sid;
+                    cout << "Resource is slotted. Enter Slot ID to cancel: ";
+                    if (!(cin >> sid)) {
+                        cout << "Invalid input.\n"; cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); break;
+                    }
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                    // Cancel slot and process waitlist if successful
+                    if (resource->cancelSlotBooking(sid)) {
+                        currentUser->removeBooking(rid); // Assuming the user booked the resource to cancel the slot
+                    } else {
+                        cout << "? Slot not found or was not booked.\n";
+                    }
+                } else {
+                    // Simple cancellation for non-slotted resources
+                    currentUser->removeBooking(rid);
+                }
+                break;
+            }
+
+            case 8: { // Quit
+                cleanup_resources(resources_table);
+                cout << "Exiting application. Goodbye!\n";
+                return 0;
+            }
+            
             default: {
-                cout << "Unknown option.\n";
+                cout << "Unknown option. Please choose a number from the menu.\n";
                 break;
             }
         }
     }
 
-exit_loop:
+    // Cleanup (though case 8 handles it, good practice to put it here too)
+    cleanup_resources(resources_table);
     return 0;
 }
 
+
+// =======================================================================
+//                        HELPER FUNCTION DEFINITIONS
+// =======================================================================
+
 static void printMenu() {
-    cout << "\n=== NUL Management Menu ===\n"<<endl;
+    cout << "\n================================================\n";
+    cout << "===      NUL Resource Management System      ===\n";
+    cout << "================================================\n";
+    cout << "Current User: " << (currentUser ? currentUser->getName() : "Guest") << "\n";
+    cout << "------------------------------------------------\n";
     cout << "1)  Login\n";
-    cout << "2)  Sign up user\n";
-    cout << "3)  Logout\n";
-    cout << "4)  List users\n";
-    cout << "5)  View user bookings\n";
-    cout << "6)  Add booking to (logged-in) user\n";
-    cout << "7)  Remove booking from (logged-in) user\n";
-    cout << "8)  Navigate NUL Campus\n";
-    cout << "9)  Add New Resource\n";
-    cout << "10) List All Resources\n";
-    cout << "11) Quit\n"<<endl;
-    cout << "\nChoose an option : ";
+    cout << "2)  Sign Up\n";
+    cout << "3)  View All Resources\n";
+    cout << "4)  View My Bookings\n";
+    cout << "5)  Display All Users (Admin Only)\n";
+    cout << "6)  Add Booking (Includes Waitlist)\n";
+    cout << "7)  Remove Booking (Processes Waitlist)\n";
+    cout << "8)  Quit\n";
+    cout << "------------------------------------------------\n";
+    cout << "Choose an option : ";
 }
 
-// Function to display the menu options
-void display_menu() {
-    cout << "\n============================================\n";
-    cout << "          NUL Campus Navigation Menu�\n";
-    cout << "============================================\n";
-    cout << "1. Find Shortest Path between two buildings\n";
-    cout << "2. List all available buildings/locations\n";
-    cout << "3. Exit Program\n"<<endl;
-    cout << "\nEnter your choice : ";
+void initialize_resources(map<int, Resource*>& resources_map) {
+    // 1. LAB Resources 
+    resources_map[next_resource_id] = new Lab(next_resource_id, "ICT Lab", "LAB", Location("ICT Building"), true);
+    next_resource_id++;
+    resources_map[next_resource_id] = new Lab(next_resource_id, "SCN303", "LAB", Location("New Science Building"), true);
+    next_resource_id++;
+
+    // 2. LECTURE HALL Resources
+    resources_map[next_resource_id] = new LectureHall(next_resource_id, "ETF1", "LECTUREHALL", Location("ETF Building"), true);
+    next_resource_id++;
+
+    // 3. BUS Resources 
+    Bus* campus_bus = new Bus(next_resource_id, "NUL Bus 1", "BUS", Location("ISAS Building"), true);
+    campus_bus->setFromDate("01-01-2025");
+    campus_bus->setToDate("31-12-2025");
+    resources_map[next_resource_id] = campus_bus;
+    next_resource_id++;
+
+    cout << "System initialized with " << resources_map.size() << " resources.\n";
 }
 
-/**
- * @brief Prompts the user for resource details, creates the object, and stores it.
- * * @param resources_map The resource collection (simulating a Hash Table's main container).
- */
-void add_new_resource(map<string, Resource*>& resources_map) {
-    string type_input;
-    cout << "\n--- Add New Resource ---\n";
-    cout << "\nEnter resource type (LAB, BUS, LECTUREHALL): ";
-    cin >> type_input;
-
-    // Standardize input to uppercase for comparison
-    transform(type_input.begin(), type_input.end(), type_input.begin(), ::toupper);
-
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Consume newline
-
-    // --- Collect Common Resource Data ---
-    string name, building, room;
-    cout << "\nEnter resource name (e.g., Chem Lab 1): ";
-    getline(cin, name);
-    
-    // Check for duplicates before gathering more info
-    if (resources_map.count(name)) {
-        cout << "Error: A resource named '" << name << "' already exists.\n";
-        return;
-    }
-
-    cout << "\nEnter building location: ";
-    getline(cin, building);
-    cout << "\nEnter room: ";
-    getline(cin, room);
-
-    // Create a Location object
-    Location loc(0, building, room); 
-
-    Resource* new_resource = NULL;
-    int current_id = next_resource_id++;
-
-    // --- Create Specific Resource Type Polymorphically ---
-    if (type_input == "LAB") {
-        // Lab constructor: Lab(id, name, type, location, available)
-        new_resource = new Lab(current_id, name, "LAB", loc, true);
-        
-    } else if (type_input == "BUS") {
-        // Bus constructor: Bus() inherits from Resource()
-        Bus* bus = new Bus();
-        bus->setId(current_id);
-        bus->setName(name);
-        bus->setType("BUS");
-        bus->setLocation(loc);
-        bus->setAvailability(true);
-        
-        new_resource = bus;
-
-    } else if (type_input == "LECTUREHALL") {
-        // LectureHall constructor: LectureHall(id, name, type, location, available)
-        new_resource = new LectureHall(current_id, name, "LECTUREHALL", loc, true);
-
-    } else {
-        cout << "\nInvalid resource type entered.\n";
-        return;
-    }
-
-    // --- Store the Resource ---
-    if (new_resource) {
-        // This simulates the insertion into your HashTable, using the name as the key.
-        resources_map[name] = new_resource; 
-        
-        cout << "\nResource Successfully added " << new_resource->getType() << " '" << name << "' (ID: " << current_id << ") to the resource manager.\n";
-    }
-}
-
-/**
- * @brief Iterates through the resources map and prints key details for all stored resources.
- * @param resources_map The resource collection (std::map<std::string, Resource*>).
- */
-void print_all_resources(const std::map<std::string, Resource*>& resources_map) {
-    std::cout << "\n============================================\n";
-    std::cout << "          Currently Stored Resources \n";
-    std::cout << "============================================\n";
-
-    if (resources_map.empty()) {
-        std::cout << "\nNo resources have been added yet.\n";
-        return;
-    }
-
-    int count = 1;
-    // Iterate over the map of resources
+void print_all_resources(const map<int, Resource*>& resources_map) {
+    cout << "\n=== Available Resources ===\n";
     for (const auto& pair : resources_map) {
-        // Use the base class pointer to access common methods
-        const Resource* res = pair.second;
-        Location loc = res->getLocation(); // Get location details
+        Resource* r = pair.second;
+        cout << "[" << r->getId() << "] " << r->getName() 
+             << " (" << r->getType() << ") at " << r->getLocation().getName();
         
-        std::cout << "[" << count++ << "] ID: " << res->getId()
-                  << " | Name: " << res->getName() << "" // Name is the map key
-                  << " | Type: " << res->getType() // e.g., LAB, BUS
-                  << " | Availability: " << (res->getAvailability() ? "Yes" : "No") << "\n";
-        
-        // Print Location details
-        std::cout << "    Location: Building " << loc.getBuilding()<<endl;
-    }
-    std::cout << "\n--------------------------------------------\n";
-}
-
-// Function to initialize the map data
-void initialize_map(NULMapGraph& map) {
-    map.add_path("Science Building", "Library", 2.0);
-    map.add_path("Library", "Moshoeshoe Building", 2.0);
-    map.add_path("Moshoeshoe Building", "ETF", 4.0);
-    map.add_path("Moshoeshoe Building","Law Building", 1.0);
-    map.add_path("Law Building", "Toilets", 1.0);
-    map.add_path("Toilets", "BTM", 1.0);
-    map.add_path("BTM", "DTF", 1.0);
-    map.add_path("ETF", "DTF", 1.0);
-    map.add_path("ETF", "FTF", 3.0);
-    map.add_path("Science Building", "Toilets", 1.5);
-    map.add_path("Toilets", "ETF", 3.5);
-    map.add_path("ETF", "Economics Building", 1.0);
-    map.add_path("Science Building", "Boitjaro", 1.0);
-    map.add_path("Boitjaro", "toilets", 1.5);
-    map.add_path("BTM", "CMP", 1.0);
-    map.add_path("CMP", "Netherland Hall", 1.0);
-    map.add_path("CMP", "Economics Building", 1.0);
-    map.add_path("CMP", "ETF", 1.0);
-    map.add_path("Netherlands Hall", "Economics Building", 2.0);
-    map.add_path("CMP", "Netherlands Hall", 1.0);
-}
-
-// Function to list all nodes
-void list_buildings(const NULMapGraph& map) {
-    cout << "\nAvailable Buildings and Locations:\n";
-    vector<string> nodes = map.get_nodes();
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        cout << i + 1 << ". " << nodes[i] << "\n";
-    }
-    cout << "\n------------------------------------------\n";
-}
-
-// Function to get and validate user input
-string get_valid_input(const NULMapGraph& map, const string& prompt) {
-    string input;
-    vector<string> valid_nodes = map.get_nodes();
-    
-    while (true) {
-        cout << prompt;
-        getline(cin, input);
-        
-        // Check if the input is a valid building name
-        if (find(valid_nodes.begin(), valid_nodes.end(), input) != valid_nodes.end()) {
-            return input;
-        }
-        
-        cout << "\nInvalid location name. Please enter one of the buildings listed in option 2.\n";
-    }
-}
-
-// Function to handle the navigation logic
-void execute_navigation(const NULMapGraph& nul_map) {
-    // Note: It's best practice to validate input against the map nodes.
-    // We'll use the validation function to ensure correct names are used.
-    
-    string start_loc = get_valid_input(nul_map, "\nEnter the starting building: ");
-    string end_loc = get_valid_input(nul_map, "\nEnter the destination building: ");
-    
-    map<string, double> distances;
-    map<string, string> previous = nul_map.dijkstra(start_loc, distances);
-
-    if (distances.count(end_loc) && distances.at(end_loc) != INF) {
-        vector<string> path;
-        string current = end_loc;
-        while (current != start_loc) {
-            path.push_back(current);
-            current = previous.at(current);
-        }
-        path.push_back(start_loc);
-        reverse(path.begin(), path.end());
-
-        cout << "\nShortest Path Found\n";
-        cout << "\nTotal Estimated Walk Time (Minutes): " << fixed << setprecision(1) << distances.at(end_loc) << "\n";
-        cout << "\nRoute: ";
-        
-        for (size_t i = 0; i < path.size(); ++i) {
-            cout << path[i];
-            if (i < path.size() - 1) {
-                cout << " -> ";
+        if (r->getType() == "LAB" || r->getType() == "LECTUREHALL") {
+            // For slotted resources, show available slots
+            Lab* lab_ptr = dynamic_cast<Lab*>(r);
+            if (lab_ptr) {
+                cout << "\n--- Time Slots ---\n";
+                lab_ptr->viewAvailableSlots();
+                cout << "------------------\n";
             }
+        } else if (r->getType() == "BUS") {
+            Bus* bus_ptr = dynamic_cast<Bus*>(r);
+            cout << " - Route Active: " << bus_ptr->getFromDate() << " to " << bus_ptr->getToDate();
         }
-        
-        cout << "\n------------------------------------------\n";
-        print_shortest_path(start_loc, end_loc, previous, distances.at(end_loc), nul_map);
-
-    } else {
-        cout << "\nPath not found from " << start_loc << " to " << end_loc << ".\n";
+        cout << "\n";
     }
+    cout << "===========================\n";
 }
 
+void cleanup_resources(map<int, Resource*>& resources_map) {
+    for (auto& pair : resources_map) {
+        delete pair.second;
+    }
+    resources_map.clear();
+}
 
