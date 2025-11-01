@@ -21,6 +21,7 @@ using namespace std;
 User* currentUser = nullptr;
 int next_user_id = 1;
 int next_resource_id = 1;
+map<int, Resource*> resources_table;
 
 // Function Prototypes
 static void printMenu();
@@ -32,7 +33,6 @@ int main() {
     
     HashTable user_db(10);
     
-    map<int, Resource*> resources_table;
     initialize_resources(resources_table);
 
     user_db.insert(next_user_id++, "Thapelo", "adminpass", "Admin");
@@ -129,8 +129,8 @@ int main() {
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
                     if (resource->bookSlot(sid)) {
-                        currentUser->addBooking(resource);
-                        cout << "? Successfully booked slot " << sid << " for resource ID " << rid << ".\n";
+                        currentUser->addBooking(resource,sid);
+                        cout << "\nSuccessfully booked slot " << sid << " for resource ID " << rid << ".\n";
                     } else {
                         // Slot already booked or not found.,Prompt waitlist.
                         cout << "\nSlot is either already booked or ID is invalid.\n";
@@ -191,7 +191,7 @@ int main() {
 
             case 8: { // Quit
                 save_resources(resources_table);
-                save_users(user_table);
+                save_users(user_db);
                 cout << "Exiting application. Goodbye!\n";
                 return 0;
             }
@@ -284,6 +284,4 @@ void cleanup_resources(map<int, Resource*>& resources_map) {
     }
     resources_map.clear();
 }
-
-void save
 

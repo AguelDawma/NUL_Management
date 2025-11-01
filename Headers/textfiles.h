@@ -71,10 +71,22 @@ void save_resources(const map<int, Resource*>& resources_map) {
 
             // 2. Waitlist
             outfile << "Waitlist:";
-            vector<int> waitlist_users;
-            lab_ptr->getWaitlist(waitlist_users);
-            for (int userId : waitlist_users) {
-                outfile << userId << ",";
+            queue<int> waitlist_users;
+            waitlist_users = lab_ptr->getWaitlist();
+            while (!waitlist_users.empty()) {
+                // Access the element at the front
+                int userId = waitlist_users.front(); 
+                
+                // Print the element
+                outfile << userId;
+
+                // Remove the element from the queue
+                waitlist_users.pop(); 
+
+                // Add a comma for separation, unless it's the last element
+                if (!waitlist_users.empty()) {
+                    outfile << ",";
+                }
             }
         }
         outfile << "\n";
@@ -102,12 +114,30 @@ void save_users(const HashTable& user_table) {
                      << user.getPasswordHash() << "|" 
                      << user.getType() << "|";
             
-             // User Bookings: RId,SId;RId,SId;...
-             outfile << "Bookings:";
-             for (const auto& booking : user.getBookings()) {
-                 outfile << booking.first << "," << booking.second << ";";
-             }
-             outfile << "\n";
+             // 1. Get a temporary COPY of the user's bookings queue.
+            queue<pair<const Resource*, int>> temp_bookings = user.getBookings(); 
+
+            outfile << "Bookings:";
+
+            // Format: RId,SId;RId,SId;...
+            while (!temp_bookings.empty()) {
+                
+                // Access the pair at the front
+                const auto& booking_pair = temp_bookings.front(); 
+                
+                // The pair contains {Resource Pointer, Slot ID}
+                
+                // Write Resource ID (RId)
+                outfile << booking_pair.first->getId() << ",";
+                
+                // Write Slot ID (SId) and the delimiter
+                outfile << booking_pair.second << ";";
+                
+                // Remove the element from the temporary queue
+                temp_bookings.pop(); 
+            }
+            
+            outfile << "\n";
         }
     }
     
@@ -158,8 +188,8 @@ void load_resources(map<int, Resource*>& resources_map) {
             new_resource = bus;
         } else if ((type == "LAB" || type == "LECTUREHALL") && parts.size() >= 7) {
             Lab* lab = (type == "LAB") 
-                       ? new Lab(id, name, type, location, available, false) // false = do not add default slots
-                       : new LectureHall(id, name, type, location, available, false);
+                       ? new Lab(id, name, type, location, available) // false = do not add default slots
+                       : new LectureHall(id, name, type, location, available);
             
             // 1. Load Slots
             string slots_data = parts[5].substr(parts[5].find(":") + 1);

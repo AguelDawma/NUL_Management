@@ -4,11 +4,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <queue>
 #include <algorithm>
-#include <limits> // Used for cin.ignore if needed
+#include <limits> 
 
 #include "Resource.h"
-#include "Lab.h" // Required for dynamic_cast and waitlist functionality
+#include "Lab.h" 
 
 using namespace std;
 
@@ -17,9 +18,9 @@ class User {
     private:
         int id;
         string name;
-        string passwordHash; // Store the hashed password
+        string passwordHash; 
         string type;
-        vector<const Resource*> bookings; // Vector to store pointers to booked resources
+        queue<pair<const Resource*, int>> bookings;
 
     public:
         // Constructors
@@ -39,17 +40,14 @@ class User {
         void setType(const string& type);
 
         // Utility Functions
-        void addBooking(const Resource* booking);
+        void addBooking(const Resource* booking, int sid);
         void removeBooking(int itemID);
         void viewMyBookings() const;
-        
-        // ? NEW: Function to add user to a resource's waitlist
+        queue<pair<const Resource*, int>> getBookings() const;
+        void loadBooking(int resourceId, int slotId);
+
         void addToResourceWaitlist(Resource* resource);
 };
-
-// =======================================================================
-//                        USER IMPLEMENTATION
-// =======================================================================
 
 // Constructors
 User::User()
@@ -76,9 +74,13 @@ void User::setType(const string& type) { this->type = type; }
  * @brief Adds a resource pointer to the user's list of bookings.
  * @param booking A constant pointer to the booked Resource object.
  */
-void User::addBooking(const Resource* booking) {
-    bookings.push_back(booking);
+void User::addBooking(const Resource* booking, int slotId = -1) {
+    bookings.push(make_pair(booking, slotId));
     cout << "  Booking confirmed: Resource ID " << booking->getId() << " added to your list.\n";
+}
+
+queue<pair<const Resource*, int>> User::getBookings() const {
+    return bookings;
 }
 
 /**
@@ -86,45 +88,60 @@ void User::addBooking(const Resource* booking) {
  * @param itemID The ID of the resource to remove.
  */
 void User::removeBooking(int itemID) {
-    // Use std::remove_if to logically move elements to be removed to the end
-    auto it = remove_if(bookings.begin(), bookings.end(), [itemID](const Resource* r) {
-        return r->getId() == itemID;
-    });
+    queue<pair<const Resource*, int>> temp_queue;
+    bool found = false;
 
-    // Erase the elements at the end
-    if (it != bookings.end()) {
-        bookings.erase(it, bookings.end());
-        cout << "  Booking for Resource ID " << itemID << " successfully removed.\n";
-    } else {
+    while (!bookings.empty()) {
+        const pair<const Resource*, int>& r = bookings.front();
+        bookings.pop();
+
+        if (r.first->getId() == itemID) {
+            found = true;
+            cout << "  Booking for Resource ID " << itemID << " successfully removed.\n";
+            continue; // Skip adding this resource to the temp queue
+        }
+        temp_queue.push(r);
+    }
+
+    bookings = temp_queue; // Restore the bookings queue without the removed item
+
+    if (!found) {
         cout << "  Booking for Resource ID " << itemID << " not found in your list.\n";
     }
 }
 
-/**
- * @brief Displays all current bookings for the user.
- */
 void User::viewMyBookings() const {
-    cout << "\n=== Bookings for user '" << name << "' (id=" << id << ") ===\n";
+    std::cout << "\nBookings for user '" << name << "' (id=" << id << ")\n";
     
-    if (bookings.empty()) {
-        cout << "  (no current bookings)\n";
+    // Check the size of the original queue
+    if (bookings.empty()) { 
+        std::cout << "  (no current bookings)\n";
     } else {
-        for (const Resource* resource : bookings) {
-            cout << "  - Resource ID: " << resource->getId()
-                 << ", Name: " << resource->getName()
-                 << ", Type: " << resource->getType()
-                 << ", Location: " << resource->getLocation().getName() << "\n";
+        // 1. Create a temporary COPY of the bookings queue to iterate through.
+        queue<pair<const Resource*, int>> temp_bookings = bookings;
+
+        // 2. Iterate using a while loop until the temporary queue is empty.
+        while (!temp_bookings.empty()) {
+            
+            // Get the element at the front
+            const Resource* resource = temp_bookings.front().first; 
+            
+            // Print the booking details
+            std::cout << "  - Resource ID: " << resource->getId()
+                      << ", Name: " << resource->getName()
+                      << ", Type: " << resource->getType()
+                      << ", Location: " << resource->getLocation().getName() << "\n";
             
             // Optionally show slot details if it's a Lab/LectureHall
             const Lab* lab_resource = dynamic_cast<const Lab*>(resource);
             if (lab_resource) {
-                // Since this is a user booking, we should probably know *which* slot was booked.
-                // For simplicity here, we'll just list all the slots it contains.
-                cout << "    (Contains " << lab_resource->getSlots().size() << " time slots.)\n";
+                std::cout << "    (Contains " << lab_resource->getSlots().size() << " time slots.)\n";
             }
+
+            temp_bookings.pop(); 
         }
     }
-    cout << "=======================================\n";
+    std::cout << "=======================================\n";
 }
 
 /**
@@ -142,6 +159,22 @@ void User::addToResourceWaitlist(Resource* resource) {
     } else {
         cout << "? Error: Resource type '" << resource->getType() << "' does not support a waitlist.\n";
     }
+}
+
+void User::loadBooking(int resourceId, int slotId = -1) {
+    // Create a temporary Resource object with the given ID
+    pair<Resource*, int> booking = make_pair(new Resource(), -1);
+    booking.first->setId(resourceId);
+    if(slotId != -1) {
+        // If slotId is valid, we assume it's a Lab or LectureHall
+        Lab* lab_booking = new Lab();
+        lab_booking->setId(resourceId);
+        lab_booking->bookSlot(slotId);
+        // Here we could load the specific slot details if needed
+        booking.first = lab_booking;
+    }
+    // Add to bookings queue
+    bookings.push(booking);
 }
 
 
