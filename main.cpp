@@ -15,6 +15,8 @@
 #include "Headers/LectureHall.h"
 #include "Headers/textfiles.h"
 #include "Headers/Slot.h"
+#include "Headers/Location.h"
+#include "Headers/Map.h"
 
 using namespace std;
 
@@ -22,14 +24,17 @@ User* currentUser = nullptr;
 int next_user_id = 1;
 int next_resource_id = 1;
 map<int, Resource*> resources_table;
+NULMapGraph campus_map;
 
 // Function Prototypes
 static void printMenu();
 void initialize_resources(map<int, Resource*>& resources_map);
 void print_all_resources(const map<int, Resource*>& resources_map);
 void cleanup_resources(map<int, Resource*>& resources_map);
+void initialize_map(NULMapGraph& graph);
 
 int main() {
+    initialize_map(campus_map);
     
     HashTable user_db(10);
     
@@ -189,9 +194,47 @@ int main() {
                 break;
             }
 
-            case 8: { // Quit
+            case 8: { // Map Navigation (Shortest Path)
+                string start_node, end_node;
+                vector<string> nodes = campus_map.get_nodes();
+
+                cout << "\n--- Map Navigation ---\n";
+                cout << "Available Locations:\n";
+                for (size_t i = 0; i < nodes.size(); ++i) {
+                    cout << i + 1 << ") " << nodes[i] << "\n";
+                }
+
+                auto get_location = [&](const string& prompt) -> string {
+                    string input;
+                    while (true) {
+                        cout << prompt;
+                        getline(cin, input);
+                        
+                        // Simple check to see if the location is valid
+                        auto it = find(nodes.begin(), nodes.end(), input);
+                        if (it != nodes.end()) {
+                            return input;
+                        }
+                        cout << "Invalid location. Please choose from the list.\n";
+                    }
+                };
+
+                start_node = get_location("Enter starting location: ");
+                end_node = get_location("Enter destination location: ");
+                
+                // 1. Run Dijkstra's algorithm
+                auto result = campus_map.dijkstra_shortest_path(start_node, end_node);
+                vector<string> path = result.first;
+                double distance = result.second;
+
+                campus_map.print_shortest_path(start_node, end_node, path, distance);
+                break;
+            }
+
+            case 0: { // Quit
                 save_resources(resources_table);
                 save_users(user_db);
+                cleanup_resources(resources_table);
                 cout << "Exiting application. Goodbye!\n";
                 return 0;
             }
@@ -222,7 +265,8 @@ static void printMenu() {
     cout << "5)  Display All Users (Admin Only)\n";
     cout << "6)  Add Booking (Includes Waitlist)\n";
     cout << "7)  Remove Booking (Processes Waitlist)\n";
-    cout << "8)  Quit\n";
+    cout << "8)  Map Navigation (Shortest Path) <-\n";
+    cout << "0)  Quit\n";
     cout << "------------------------------------------------\n";
     cout << "Choose an option : ";
 }
@@ -283,5 +327,25 @@ void cleanup_resources(map<int, Resource*>& resources_map) {
         delete pair.second;
     }
     resources_map.clear();
+}
+
+void initialize_map(NULMapGraph& graph) {
+    graph.add_path("Main Library", "Admin Block", 2.0);
+    graph.add_path("Main Library", "Old Science Building", 2.0);
+    graph.add_path("ISAS Building", "DTF", 3.0);
+    graph.add_path("Admin Block", "Moshoeshoe Building", 2.5);
+    graph.add_path("ISAS Building", "Bus Stop", 2.0);
+    graph.add_path("Moshoeshoe Building", "Law Building", 1.0);
+    graph.add_path("Law Building", "ICT Lab", 1.0);
+    graph.add_path("ICT Lab", "BTM Toilets", 1.0);
+    graph.add_path("BTM Toilets", "DTF", 2.0);
+    graph.add_path("BTM Toilets", "BTM Building", 1.0);
+    graph.add_path("BTM Building", "CMP Building", 1.0);
+    graph.add_path("CMP Building", "ETF Building", 2.0);
+    graph.add_path("CMP Building", "Netherlands Hall", 3.0);
+    graph.add_path("ETF Building", "FTF Building", 2.0);
+    graph.add_path("New Science Building", "Old Science Building", 2.0);
+    graph.add_path("New Science Building", "Boitjaro Building", 1.0);
+    graph.add_path("Moshoeshoe Building", "Main Library", 1.5);
 }
 
