@@ -12,6 +12,7 @@ class Bus: public Resource{
 
     public:
         Bus();
+        Bus(int, string, string, Location, bool);
 
         void setFromDate(string);
         void setToDate(string);
@@ -24,6 +25,14 @@ class Bus: public Resource{
 
 
 Bus::Bus() : Resource(), fromDate(""), toDate("") {}
+
+Bus::Bus(int Id, string Name, string Type, Location loc, bool isAv){
+	id=Id;
+	name = Name;
+	type = Type;
+	isAvailable = isAv;
+	location = loc;
+}
 
 void Bus::setFromDate(string d) { fromDate = d; }
 void Bus::setToDate(string d) { toDate = d; }

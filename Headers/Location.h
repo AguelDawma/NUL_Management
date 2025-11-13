@@ -4,7 +4,7 @@
 #include <string>
 
 using namespace std;
-
+/*
 class Location {
 public:
     Location();
@@ -36,6 +36,6 @@ void Location::setRoom(const string& room) { this->room = room; }
 int Location::getId() const { return id; }
 string Location::getBuilding() const { return building; }
 string Location::getRoom() const { return room; }
-
+*/
 
 #endif // LOCATION_H
